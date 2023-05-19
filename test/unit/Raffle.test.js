@@ -10,7 +10,7 @@ chainId !== 31337
           //we are going to deploy Raffle contract using hardhat deploy
           // fixture allows to run the deploy folder with many tags as we want
           // when we say ["all"] it will run through all deploy scripts and deploy
-          let raffle, deployer, VRFCoordinatorV2Mock, raffleEntranceFee;
+          let raffle, deployer, VRFCoordinatorV2Mock, raffleEntranceFee, interval;
           beforeEach(async () => {
               deployer = (await getNamedAccounts()).deployer;
               await deployments.fixture(["all"]); //this line of code will deploy all our contracts
@@ -21,13 +21,13 @@ chainId !== 31337
               // we are getting the deployed mock contract
               // since we are running locally, we are testing with mock contract
               raffleEntranceFee = await raffle.getEntranceFee();
+              interval = await raffle.getInterval();
           });
 
           //these test will be just for the constructor
           describe("constructor", () => {
               it("initializes the raffle correctly", async () => {
                   const raffleState = await raffle.getRaffleState();
-                  const interval = await raffle.getInterval();
                   const vrfCoordinatorAddress = await raffle.getVrfCoordinatorAddress();
                   const entranceFee = await raffle.getEntranceFee();
 
@@ -50,13 +50,40 @@ chainId !== 31337
                       "Raffle__NotEnoughETHEntered"
                   );
               });
-              //   it.only("Raffle is not open", ()=>{
-              //     await expect()
-              //   })
-              it.only("records players when they enter", async () => {
-                  const response = await raffle.enterRaffle({ value: raffleEntranceFee });
+              it("records players when they enter", async () => {
+                  await raffle.enterRaffle({ value: raffleEntranceFee });
                   const playerFromContract = await raffle.getPlayer(0);
                   assert.equal(playerFromContract, deployer);
+              });
+              it("emits event on enter", async () => {
+                  //testing whether function emits an event
+                  await expect(raffle.enterRaffle({ value: raffleEntranceFee })).to.emit(
+                      raffle,
+                      "RaffleEnter"
+                  );
+              });
+              it("dosen't allow entrance when raffle is calculating", async () => {
+                  await raffle.enterRaffle({ value: raffleEntranceFee });
+                  // for a documentation of the methods below, go here: https://hardhat.org/hardhat-network/reference
+                  // inorder not to allow the player to enter raffle, we need to change raffleState to calculating
+                  await network.provider.send("evm_increaseTime", [interval.toNumber() + 1]);
+                  await network.provider.send("evm_mine", []);
+                  //   await network.provider.request({ method: "evm_mine", params: [] });
+                  // we pretend to be a chainlink keeper
+                  await raffle.performUpkeep([]);
+                  await expect(
+                      raffle.enterRaffle({ value: raffleEntranceFee })
+                  ).to.be.revertedWithCustomError(raffle, "Raffle__NotOpen");
+              });
+          });
+
+          // test cases for checkupkeep
+          describe("checkupkeep", async () => {
+              it.only("returns false if people haven't sent enough ETH", async () => {
+                  await network.provider.send("evm_increaseTime", [interval.toNumber() + 1]);
+                  await network.provider.send("evm_mine", []);
+                  const { upkeepNeeded } = await raffle.callStatic.checkUpkeep([]);
+                  assert(!upkeepNeeded);
               });
           });
       });

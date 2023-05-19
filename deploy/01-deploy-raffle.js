@@ -48,6 +48,11 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
 
     log("---------------------");
 
+    if (chainId === 31337) {
+        const vrfCoordinatorV2 = await ethers.getContract("VRFCoordinatorV2Mock");
+        await vrfCoordinatorV2.addConsumer(subscriptionId, raffle.address);
+    }
+
     //Verification
     if (chainId !== 31337 && process.env.ETHERSCAN_API_KEY) {
         await verify(raffle.address, args);
