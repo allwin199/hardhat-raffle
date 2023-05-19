@@ -60,8 +60,10 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface{
 
     // Events
     event RaffleEnter(address indexed player); // it is taking one indexed parameter
+    // it keeps track of all the players entered the raffle
     event RequestedRaffleWinner(uint256 indexed requestId);
     event WinnerPicked(address indexed winner);
+    // it keeps track of all the winners.
 
     constructor(
         address vrfCoordinatorV2,
@@ -146,8 +148,8 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface{
         s_recentWinner = recentWinner;
         s_raffleState = RaffleState.OPEN;
         //Resetting the array after winner is picked
-        s_players = new address payable[](0);
-        s_lastTimeStamp = block.timestamp;
+        s_players = new address payable[](0); //resetting the array
+        s_lastTimeStamp = block.timestamp; //resetting the timestamp
         //sending the money to the winner
         (bool success,) = recentWinner.call{value: address(this).balance}("");
         if(!success){
@@ -155,7 +157,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface{
         }
         emit WinnerPicked(recentWinner);
     }
-    // this will the second transaction after requestRandomWinner
+    // this will be the second transaction after requestRandomWinner
     // fullfillRandomWords fn is available in VRFConsumerBaseV2 and we are overriding it 
 
     // View / pure functions

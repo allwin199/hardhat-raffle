@@ -48,6 +48,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
 
     log("---------------------");
 
+    // we need a valid consumer while running locally
     if (chainId === 31337) {
         const vrfCoordinatorV2 = await ethers.getContract("VRFCoordinatorV2Mock");
         await vrfCoordinatorV2.addConsumer(subscriptionId, raffle.address);
