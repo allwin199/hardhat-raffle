@@ -7,21 +7,59 @@ const chainId = network.config.chainId;
 chainId === 31337
     ? describe.skip
     : describe("Raffle Unit Tests", () => {
-          //we are going to deploy Raffle contract using hardhat deploy
-          // fixture allows to run the deploy folder with many tags as we want
-          // when we say ["all"] it will run through all deploy scripts and deploy
           let raffle, deployer, raffleEntranceFee;
           beforeEach(async () => {
-              accounts = await ethers.getSigners();
               deployer = (await getNamedAccounts()).deployer;
-              await deployments.fixture(["all"]); //this line of code will deploy all our contracts
               raffle = await ethers.getContract("Raffle", deployer);
-              //ethers work with hardhat, using getContract it will provide the latest one.
-              // the reson we are adding deployer is, whenver we call that fundMe it will be from that deployer account
-              VRFCoordinatorV2Mock = await ethers.getContract("VRFCoordinatorV2Mock", deployer);
-              // we are getting the deployed mock contract
-              // since we are running locally, we are testing with mock contract
               raffleEntranceFee = await raffle.getEntranceFee();
-              interval = await raffle.getInterval();
+          });
+
+          describe("fulfillRandomWords", () => {
+              it("works with live Chainlink Keepers and Chainlink VRF, we get a random winner", async () => {
+                  // enter the raffle
+                  console.log("Setting up test...");
+                  const startingTimeStamp = await raffle.getLastTimeStamp();
+                  const accounts = await ethers.getSigners();
+
+                  console.log("Setting up Listener...");
+                  await new Promise(async (resolve, reject) => {
+                      // setup listener before we enter the raffle
+                      // Just in case the blockchain moves REALLY fast
+                      raffle.once("WinnerPicked", async () => {
+                          console.log("WinnerPicked event fired!");
+                          try {
+                              // add our asserts here
+                              const recentWinner = await raffle.getRecentWinner();
+                              const raffleState = await raffle.getRaffleState();
+                              const winnerEndingBalance = await accounts[0].getBalance();
+                              // since we are only entering with the deployer
+                              // we are checking the deployer balance
+                              const endingTimeStamp = await raffle.getLastTimeStamp();
+
+                              await expect(raffle.getPlayer(0)).to.be.reverted;
+                              // since the player array is reset, player[0] should be reverted
+                              assert.equal(recentWinner.toString(), accounts[0].address);
+                              assert.equal(raffleState, 0);
+                              assert.equal(
+                                  winnerEndingBalance.toString(),
+                                  winnerStartingBalance.add(raffleEntranceFee).toString()
+                              );
+                              //   since deployer is the only one entering the raffle, that account should get the money back
+                              assert(endingTimeStamp > startingTimeStamp);
+                              resolve();
+                          } catch (error) {
+                              console.log(error);
+                              reject(error);
+                          }
+                      });
+                      // Then entering the raffle
+                      console.log("Entering Raffle...");
+                      const tx = await raffle.enterRaffle({ value: raffleEntranceFee });
+                      await tx.wait(1);
+                      console.log("Ok, time to wait...");
+                      const winnerStartingBalance = await accounts[0].getBalance();
+                      // and this code WONT complete until our listener has finished listening!
+                  });
+              });
           });
       });
