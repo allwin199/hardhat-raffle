@@ -1,13 +1,32 @@
-# Sample Hardhat Project
+# Hardhat Smartcontract Lottery (Raffle)
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+## Quickstart
 
-Try running some of the following tasks:
-
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.js
 ```
+git clone https://github.com/worksofallwin/hardhat-raffle.git
+cd hardhat-raffle
+yarn
+```
+
+# Usage
+
+Deploy:
+
+```
+yarn hardhat deploy
+```
+
+## Testing
+
+```
+yarn hardhat test
+```
+
+### Test Coverage
+
+```
+yarn hardhat coverage
+```
+
+# Thank you!
+
